@@ -1,0 +1,36 @@
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+.vs/
+**/launchSettings.json
+**/appsettings.Development.json
+
+# Flutter
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec.lock
+**/.pub-cache/
+**/.pub/
+**/*.iml
+**/.idea/
+
+# Environment & secrets
+.env
+*.env
+secrets.json
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+**/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
