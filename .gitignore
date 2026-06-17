@@ -30,6 +30,10 @@ docker-compose.override.yml
 *.log
 **/logs/
 
+# Release artifacts
+fit-build*.zip
+.env*.zip
+
 # OS
 .DS_Store
 Thumbs.db
