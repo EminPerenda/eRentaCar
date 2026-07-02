@@ -1,9 +1,32 @@
+import 'package:flutter/foundation.dart';
+
 class ApiConfig {
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.100.100.216:5091',
-  );
-static const String stripePublishableKey = 'pk_test_51R15iKQeAv5CVrKBNRdp2W0gI6lLWp51wvb3uuO8BHCl6mZeiYILwRnF6xAxWclDYyxdeAt2ogqvRsl00d9W3iTp00c4ay8P62';
+  static final String baseUrl = _resolveBaseUrl();
+  static const String stripePublishableKey = 'pk_test_51R15iKQeAv5CVrKBNRdp2W0gI6lLWp51wvb3uuO8BHCl6mZeiYILwRnF6xAxWclDYyxdeAt2ogqvRsl00d9W3iTp00c4ay8P62';
+
+  static String _resolveBaseUrl() {
+    const envBaseUrl = String.fromEnvironment('API_BASE_URL');
+    if (envBaseUrl.isNotEmpty) {
+      return envBaseUrl;
+    }
+
+    if (kIsWeb) {
+      return 'http://localhost:5091';
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://10.0.2.2:5091';
+      case TargetPlatform.iOS:
+        return 'http://localhost:5091';
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return 'http://localhost:5091';
+    }
+  }
+
   // Auth
   static const String login = '/api/auth/login';
   static const String register = '/api/auth/register';

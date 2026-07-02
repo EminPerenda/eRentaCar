@@ -103,9 +103,9 @@ class ApiService {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
-        return 'Timeout — provjeri internet konekciju.';
+        return 'Timeout — provjeri API_BASE_URL i da li koristiš emulator ili fizički uređaj.';
       case DioExceptionType.connectionError:
-        return 'Nije moguće spojiti se na server.';
+        return 'Nije moguće spojiti se na server. Provjeri IP adresu API-ja i mrežnu dostupnost.';
       default:
         return 'Došlo je do greške. Pokušaj ponovo.';
     }

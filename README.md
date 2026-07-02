@@ -6,14 +6,14 @@ Rent-a-car management system with a Flutter Desktop admin application, Flutter M
 
 ## Architecture
 
-| Service     | Technology            | Port  |
-|-------------|----------------------|-------|
-| API         | .NET 9 / ASP.NET Core | 5091  |
-| Worker      | .NET 9 Background Worker | —  |
-| Database    | SQL Server 2022       | 1433  |
-| RabbitMQ    | RabbitMQ 3.13         | 5672 / 15672 |
-| Desktop App | Flutter (Windows)     | —     |
-| Mobile App  | Flutter (Android/iOS) | —     |
+| Service     | Technology               | Port         |
+| ----------- | ------------------------ | ------------ |
+| API         | .NET 9 / ASP.NET Core    | 5091         |
+| Worker      | .NET 9 Background Worker | —            |
+| Database    | SQL Server 2022          | 1433         |
+| RabbitMQ    | RabbitMQ 3.13            | 5672 / 15672 |
+| Desktop App | Flutter (Windows)        | —            |
+| Mobile App  | Flutter (Android/iOS)    | —            |
 
 ---
 
@@ -98,35 +98,37 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5091
 flutter run --dart-define=API_BASE_URL=http://<YOUR_LAN_IP>:5091
 ```
 
+Napomena: `10.0.2.2` radi samo na Android emulatoru. Ako koristiš pravi telefon, moraš koristiti LAN IP računara na kojem radi API, npr. `http://192.168.1.20:5091`. Ako je uređaj povezan USB kablom i Android je u pitanju, možeš i koristiti `adb reverse tcp:5091 tcp:5091` pa onda kao `API_BASE_URL` ostaviti `http://localhost:5091`.
+
 ---
 
 ## Environment Variables (`.env`)
 
-| Variable            | Description                              | Default                    |
-|---------------------|------------------------------------------|----------------------------|
-| `CONNECTION_STRING` | SQL Server connection string             | *(required)*               |
-| `JWT_KEY`           | JWT signing key (min. 32 chars)          | *(required)*               |
-| `JWT_ISSUER`        | JWT issuer                               | `eRentaCar`                |
-| `JWT_AUDIENCE`      | JWT audience                             | `eRentaCar`                |
-| `RABBITMQ_HOST`     | RabbitMQ hostname                        | `localhost`                |
-| `SMTP_HOST`         | SMTP server                              | *(required for emails)*    |
-| `SMTP_PORT`         | SMTP port                                | `587`                      |
-| `SMTP_USER`         | SMTP username                            | *(required for emails)*    |
-| `SMTP_PASSWORD`     | SMTP password                            | *(required for emails)*    |
-| `SA_PASSWORD`       | SQL Server SA password (Docker only)     | `eRentaCar_SA_2024!`       |
-| `DB_NAME`           | Database name                            | `230290`                   |
-| `ALLOWED_ORIGINS`   | CORS allowed origins (comma-separated)   | `*`                        |
-| `STRIPE_SECRET_KEY`      | Stripe secret key for payments           | *(required for payments)*  |
-| `STRIPE_WEBHOOK_SECRET`  | Stripe webhook signing secret (`whsec_…`) | *(required for webhook)*  |
+| Variable                | Description                               | Default                   |
+| ----------------------- | ----------------------------------------- | ------------------------- |
+| `CONNECTION_STRING`     | SQL Server connection string              | _(required)_              |
+| `JWT_KEY`               | JWT signing key (min. 32 chars)           | _(required)_              |
+| `JWT_ISSUER`            | JWT issuer                                | `eRentaCar`               |
+| `JWT_AUDIENCE`          | JWT audience                              | `eRentaCar`               |
+| `RABBITMQ_HOST`         | RabbitMQ hostname                         | `localhost`               |
+| `SMTP_HOST`             | SMTP server                               | _(required for emails)_   |
+| `SMTP_PORT`             | SMTP port                                 | `587`                     |
+| `SMTP_USER`             | SMTP username                             | _(required for emails)_   |
+| `SMTP_PASSWORD`         | SMTP password                             | _(required for emails)_   |
+| `SA_PASSWORD`           | SQL Server SA password (Docker only)      | `eRentaCar_SA_2024!`      |
+| `DB_NAME`               | Database name                             | `230290`                  |
+| `ALLOWED_ORIGINS`       | CORS allowed origins (comma-separated)    | `*`                       |
+| `STRIPE_SECRET_KEY`     | Stripe secret key for payments            | _(required for payments)_ |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_…`) | _(required for webhook)_  |
 
 ---
 
 ## Test Credentials
 
-| Application      | Role          | Email                  | Password    |
-|------------------|---------------|------------------------|-------------|
-| Desktop (admin)  | Administrator | `desktop@test.com`     | `Test1234!` |
-| Mobile (client)  | Klijent       | `mobile@test.com`      | `Test1234!` |
+| Application     | Role          | Email              | Password    |
+| --------------- | ------------- | ------------------ | ----------- |
+| Desktop (admin) | Administrator | `desktop@test.com` | `Test1234!` |
+| Mobile (client) | Klijent       | `mobile@test.com`  | `Test1234!` |
 
 These accounts are seeded automatically on first startup.
 
@@ -134,19 +136,19 @@ These accounts are seeded automatically on first startup.
 
 ## API Endpoints — Key Routes
 
-| Method | Route                              | Auth       | Description                    |
-|--------|------------------------------------|------------|--------------------------------|
-| POST   | `/api/auth/login`                  | Public     | Login, returns JWT             |
-| POST   | `/api/auth/register`               | Public     | Register new client            |
-| POST   | `/api/auth/logout`                 | JWT        | Invalidate token server-side   |
-| GET    | `/api/vehicles`                    | Public     | List vehicles with filters     |
-| POST   | `/api/reservations`                | Client     | Create reservation             |
-| POST   | `/api/payments/create-payment-intent/{id}` | Client | Create Stripe payment intent |
-| POST   | `/api/payments/confirm/{id}`       | Client     | Confirm payment (idempotent)   |
-| POST   | `/api/payments/refund/{id}`        | Client     | Request refund                 |
-| POST   | `/api/payments/webhook`            | Public     | Stripe webhook receiver        |
-| GET    | `/api/reports/financial`           | Admin      | Financial report               |
-| POST   | `/api/notifications/send`          | Admin      | Send notification to all users |
+| Method | Route                                      | Auth   | Description                    |
+| ------ | ------------------------------------------ | ------ | ------------------------------ |
+| POST   | `/api/auth/login`                          | Public | Login, returns JWT             |
+| POST   | `/api/auth/register`                       | Public | Register new client            |
+| POST   | `/api/auth/logout`                         | JWT    | Invalidate token server-side   |
+| GET    | `/api/vehicles`                            | Public | List vehicles with filters     |
+| POST   | `/api/reservations`                        | Client | Create reservation             |
+| POST   | `/api/payments/create-payment-intent/{id}` | Client | Create Stripe payment intent   |
+| POST   | `/api/payments/confirm/{id}`               | Client | Confirm payment (idempotent)   |
+| POST   | `/api/payments/refund/{id}`                | Client | Request refund                 |
+| POST   | `/api/payments/webhook`                    | Public | Stripe webhook receiver        |
+| GET    | `/api/reports/financial`                   | Admin  | Financial report               |
+| POST   | `/api/notifications/send`                  | Admin  | Send notification to all users |
 
 Full documentation available at `/swagger` when the API is running.
 
