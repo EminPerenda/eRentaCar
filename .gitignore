@@ -32,7 +32,7 @@ docker-compose.override.yml
 
 # Release artifacts
 fit-build*.zip
-.env*.zip
+
 
 # OS
 .DS_Store
