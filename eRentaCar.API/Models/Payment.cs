@@ -5,7 +5,7 @@ namespace eRentaCar.API.Models
     {
         public int Id { get; set; }
         public int UserId { get; set; }
-        public int? ReservationId { get; set; }
+        public int ReservationId { get; set; }
         public decimal Amount { get; set; }
         public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
         public string PaymentIntentId { get; set; } = null!;

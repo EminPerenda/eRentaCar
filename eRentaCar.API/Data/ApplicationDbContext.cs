@@ -212,7 +212,7 @@ namespace eRentaCar.API.Data
 
                 e.HasOne(x => x.Payment)
                     .WithOne(x => x.Reservation)
-                    .HasForeignKey<Reservation>(x => x.PaymentId)
+                    .HasForeignKey<Payment>(x => x.ReservationId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 e.HasOne(x => x.ApprovedBy)

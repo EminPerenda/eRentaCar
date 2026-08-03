@@ -34,6 +34,9 @@ namespace eRentaCar.API.Services
                 .Where(x => x.IsActive)
                 .AsQueryable();
 
+            if (!filter.IncludeUnavailable)
+                query = query.Where(x => x.Status == VehicleStatus.Available);
+
             if (!string.IsNullOrEmpty(filter.Search))
                 query = query.Where(x =>
                     x.LicensePlate.Contains(filter.Search) ||
@@ -115,6 +118,8 @@ namespace eRentaCar.API.Services
 
         public async Task<VehicleResponse> CreateAsync(VehicleRequest request)
         {
+            await ValidateVehicleRequestAsync(request);
+
             if (await _context.Vehicles.AnyAsync(x => x.LicensePlate == request.LicensePlate))
                 throw new BusinessException($"Vozilo s registarskom oznakom {request.LicensePlate} već postoji.");
 
@@ -145,6 +150,8 @@ namespace eRentaCar.API.Services
             var vehicle = await _context.Vehicles.FindAsync(id)
                 ?? throw new NotFoundException("Vozilo", id);
 
+            await ValidateVehicleRequestAsync(request);
+
             if (await _context.Vehicles.AnyAsync(x => x.LicensePlate == request.LicensePlate && x.Id != id))
                 throw new BusinessException($"Vozilo s registarskom oznakom {request.LicensePlate} već postoji.");
 
@@ -164,6 +171,60 @@ namespace eRentaCar.API.Services
             await _context.SaveChangesAsync();
 
             return await GetByIdAsync(vehicle.Id);
+        }
+
+        private async Task ValidateVehicleRequestAsync(VehicleRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.LicensePlate))
+                throw new BusinessException("Registarska oznaka je obavezna.");
+
+            if (string.IsNullOrWhiteSpace(request.Model))
+                throw new BusinessException("Model vozila je obavezan.");
+
+            if (request.PricePerDay <= 0)
+                throw new BusinessException("Cijena po danu mora biti veća od nule.");
+
+            if (request.Seats <= 0)
+                throw new BusinessException("Broj sjedišta mora biti veći od nule.");
+
+            if (request.Mileage < 0)
+                throw new BusinessException("Kilometraža ne može biti negativna.");
+
+            var currentYear = DateTime.UtcNow.Year;
+            if (request.Year < 1950 || request.Year > currentYear + 1)
+                throw new BusinessException("Godina vozila nije u realnom rasponu.");
+
+            await EnsureExistsAsync(_context.VehicleBrands, request.BrandId, "Proizvođač vozila ne postoji.");
+            await EnsureActiveCategoryAsync(request.CategoryId);
+            await EnsureExistsAsync(_context.FuelTypes, request.FuelTypeId, "Vrsta goriva ne postoji.");
+            await EnsureExistsAsync(_context.Transmissions, request.TransmissionId, "Mjenjač ne postoji.");
+            await EnsureActiveLocationAsync(request.CurrentLocationId);
+        }
+
+        private async Task EnsureExistsAsync<TEntity>(DbSet<TEntity> set, int id, string message)
+            where TEntity : class
+        {
+            var exists = await set.AnyAsync(x => EF.Property<int>(x, "Id") == id);
+            if (!exists)
+                throw new BusinessException(message);
+        }
+
+        private async Task EnsureActiveCategoryAsync(int categoryId)
+        {
+            var category = await _context.VehicleCategories.FindAsync(categoryId)
+                ?? throw new BusinessException("Kategorija vozila ne postoji.");
+
+            if (!category.IsActive)
+                throw new BusinessException("Kategorija vozila nije aktivna.");
+        }
+
+        private async Task EnsureActiveLocationAsync(int locationId)
+        {
+            var location = await _context.Locations.FindAsync(locationId)
+                ?? throw new BusinessException("Lokacija ne postoji.");
+
+            if (!location.IsActive)
+                throw new BusinessException("Lokacija nije aktivna.");
         }
 
         public async Task DeleteAsync(int id)

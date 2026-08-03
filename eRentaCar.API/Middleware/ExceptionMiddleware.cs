@@ -52,7 +52,8 @@ namespace eRentaCar.API.Middleware
             var response = new
             {
                 status = statusCode,
-                message
+                message,
+                code = (ex as AppException)?.ErrorCode
             };
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(response));

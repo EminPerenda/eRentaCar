@@ -101,6 +101,18 @@ namespace eRentaCar.API.Services
             if (vehicle.Status != VehicleStatus.Available)
                 throw new BusinessException("Odabrano vozilo trenutno nije dostupno.");
 
+            var pickupLocation = await _context.Locations.FindAsync(request.PickupLocationId)
+                ?? throw new BusinessException("Polazna lokacija ne postoji.");
+
+            if (!pickupLocation.IsActive)
+                throw new BusinessException("Polazna lokacija trenutno nije aktivna.");
+
+            var dropoffLocation = await _context.Locations.FindAsync(request.DropoffLocationId)
+                ?? throw new BusinessException("Odredišna lokacija ne postoji.");
+
+            if (!dropoffLocation.IsActive)
+                throw new BusinessException("Odredišna lokacija trenutno nije aktivna.");
+
             var hasOverlap = await _context.Reservations.AnyAsync(x =>
                 x.VehicleId == request.VehicleId &&
                 x.Status != ReservationStatus.Cancelled &&
@@ -127,6 +139,9 @@ namespace eRentaCar.API.Services
             var extras = new List<ReservationExtra>();
             foreach (var extraReq in request.Extras)
             {
+                if (extraReq.Quantity <= 0)
+                    throw new BusinessException("Količina dodatne usluge mora biti veća od nule.");
+
                 var service = await _context.ExtraServices.FindAsync(extraReq.ExtraServiceId)
                     ?? throw new NotFoundException("Dodatna usluga", extraReq.ExtraServiceId);
 
@@ -233,10 +248,15 @@ namespace eRentaCar.API.Services
 
         public async Task<ReservationResponse> ActivateAsync(int id, int adminId)
         {
-            var reservation = await _context.Reservations.FindAsync(id)
+            var reservation = await _context.Reservations
+                .Include(x => x.Payment)
+                .FirstOrDefaultAsync(x => x.Id == id)
                 ?? throw new NotFoundException("Rezervacija", id);
 
             ReservationStateMachine.ValidateTransition(reservation.Status, ReservationStatus.Active);
+
+            if (reservation.Payment == null || reservation.Payment.Status != PaymentStatus.Completed)
+                throw new BusinessException("Rezervacija mora biti plaćena prije preuzimanja.");
 
             reservation.Status = ReservationStatus.Active;
             reservation.ActivatedById = adminId;
@@ -256,12 +276,31 @@ namespace eRentaCar.API.Services
         public async Task<ReservationResponse> CancelAsync(int id, int userId, string reason, bool isAdmin)
         {
             var reservation = await _context.Reservations
+                .Include(x => x.Payment)
                 .Include(x => x.User)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 ?? throw new NotFoundException("Rezervacija", id);
 
             if (!isAdmin && reservation.UserId != userId)
                 throw new UnauthorizedException("Nemate pravo otkazati ovu rezervaciju.");
+
+            if (reservation.Payment?.Status == PaymentStatus.Completed)
+                throw new BusinessException("Plaćene rezervacije se otkazuju kroz refund tok.", "PAID_RESERVATION_REQUIRES_REFUND");
+
+            if (reservation.Payment?.Status == PaymentStatus.Pending)
+            {
+                var stripePaymentIntentService = new Stripe.PaymentIntentService();
+                var intent = await stripePaymentIntentService.GetAsync(reservation.Payment.PaymentIntentId);
+
+                if (string.Equals(intent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+                    throw new BusinessException("Plaćene rezervacije se otkazuju kroz refund tok.", "PAID_RESERVATION_REQUIRES_REFUND");
+
+                if (!string.Equals(intent.Status, "canceled", StringComparison.OrdinalIgnoreCase))
+                    await stripePaymentIntentService.CancelAsync(reservation.Payment.PaymentIntentId);
+
+                reservation.Payment.Status = PaymentStatus.Failed;
+                reservation.Payment.Description = "PaymentIntent canceled during reservation cancellation.";
+            }
 
             ReservationStateMachine.ValidateTransition(reservation.Status, ReservationStatus.Cancelled);
 
@@ -273,7 +312,9 @@ namespace eRentaCar.API.Services
             reservation.CancelledById = userId;
             reservation.CancelledAt = DateTime.UtcNow;
 
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             await _notificationService.SendToUserAsync(
                 reservation.UserId,
@@ -286,10 +327,18 @@ namespace eRentaCar.API.Services
 
         public async Task<ReservationResponse> CompleteAsync(int id, int adminId)
         {
-            var reservation = await _context.Reservations.FindAsync(id)
+            var reservation = await _context.Reservations
+                .Include(x => x.Payment)
+                .FirstOrDefaultAsync(x => x.Id == id)
                 ?? throw new NotFoundException("Rezervacija", id);
 
+            if (reservation.Status != ReservationStatus.Active)
+                throw new BusinessException("Samo aktivna rezervacija može biti završena.");
+
             ReservationStateMachine.ValidateTransition(reservation.Status, ReservationStatus.Completed);
+
+            if (reservation.Payment == null || reservation.Payment.Status != PaymentStatus.Completed)
+                throw new BusinessException("Rezervacija mora biti plaćena prije završetka.");
 
             reservation.Status = ReservationStatus.Completed;
             reservation.CompletedById = adminId;
@@ -336,6 +385,7 @@ namespace eRentaCar.API.Services
         private static ReservationResponse MapToResponse(Reservation r) => new()
         {
             Id = r.Id,
+            UserId = r.UserId,
             VehicleId = r.VehicleId,
             ClientName = $"{r.User.FirstName} {r.User.LastName}",
             ClientEmail = r.User.Email!,

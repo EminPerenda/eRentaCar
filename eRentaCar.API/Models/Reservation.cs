@@ -16,7 +16,6 @@ namespace eRentaCar.API.Models
         public decimal ExtrasPrice { get; set; } = 0;
         public decimal TotalPrice { get; set; }
         public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
-        public int? PaymentId { get; set; }
         public string? CancellationReason { get; set; }
         public int? CancelledById { get; set; }
         public DateTime? CancelledAt { get; set; }

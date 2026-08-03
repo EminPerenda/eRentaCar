@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  static const String _clientRole = 'Client';
 
   bool _isLoggedIn = false;
   bool _isLoading = true;
@@ -25,6 +26,16 @@ class AuthProvider extends ChangeNotifier {
       if (_isLoggedIn) {
         final user = await _authService.getCurrentUser();
         _role = user['role'] as String?;
+        if (_role != _clientRole) {
+          await _authService.logout();
+          _isLoggedIn = false;
+          _role = null;
+          _fullName = null;
+          _email = null;
+          _isLoading = false;
+          notifyListeners();
+          return;
+        }
         _fullName = user['fullName'] as String?;
         _email = user['email'] as String?;
       }
@@ -42,6 +53,10 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     final response = await _authService.login(email, password);
+    if (response['role'] != _clientRole) {
+      await _authService.logout();
+      throw Exception('Ova aplikacija je dostupna samo klijentima.');
+    }
     _isLoggedIn = true;
     _role = response['role'];
     _fullName = response['fullName'];

@@ -107,6 +107,7 @@ namespace eRentaCar.API.Services
 
             await _publisher.PublishAsync(new NotificationMessage
             {
+                NotificationId = notification.Id.ToString(),
                 UserId = userId,
                 Title = title,
                 Message = message,
@@ -144,6 +145,7 @@ namespace eRentaCar.API.Services
 
             var publishTasks = users.Select(u => _publisher.PublishAsync(new NotificationMessage
             {
+                NotificationId = notifications.First(n => n.UserId == u.Id && n.Title == title && n.Message == message).Id.ToString(),
                 UserId = u.Id,
                 Title = title,
                 Message = message,

@@ -37,8 +37,9 @@ void dispose() {
     setState(() => _isLoading = true);
     try {
       final data = await _api.get(ApiConfig.notifications);
+      final items = (data is Map<String, dynamic> ? data['items'] : null) as List? ?? const [];
       setState(() {
-        _notifications = data;
+        _notifications = items;
         _isLoading = false;
       });
     } catch (e) {

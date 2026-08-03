@@ -48,6 +48,7 @@ namespace eRentaCar.Worker.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Greška pri slanju emaila na {Email}", toEmail);
+                throw;
             }
         }
     }

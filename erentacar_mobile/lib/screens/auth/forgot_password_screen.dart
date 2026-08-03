@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../services/api_exception.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -51,7 +52,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _success = 'Kod je poslan na vaš e-mail.';
       });
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _mapRequestError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -78,6 +79,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       await _api.post('/api/passwordreset/confirm', {
+        'email': _emailController.text.trim(),
         'code': _codeController.text.trim(),
         'newPassword': _newPasswordController.text,
       });
@@ -91,10 +93,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _mapConfirmError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _mapRequestError(Object error) {
+    if (error is ApiException) {
+      return 'Ako nalog postoji, poslali smo kod za reset.';
+    }
+
+    return error.toString();
+  }
+
+  String _mapConfirmError(Object error) {
+    if (error is ApiException) {
+      switch (error.code) {
+        case 'RESET_CODE_EXPIRED':
+          return 'Kod je istekao. Zatražite novi kod.';
+        case 'RESET_CODE_ATTEMPTS_EXCEEDED':
+          return 'Previše pokušaja. Zatražite novi kod.';
+        case 'RESET_CODE_INVALID':
+          return 'Neispravan kod. Provjerite unos i pokušajte ponovo.';
+        default:
+          return error.message;
+      }
+    }
+
+    return error.toString();
   }
 
   @override

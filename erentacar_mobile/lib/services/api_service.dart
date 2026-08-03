@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../config/app_router.dart';
 import '../screens/auth/login_screen.dart';
+import 'api_exception.dart';
 
 class ApiService {
   late final Dio _dio;
@@ -89,25 +90,32 @@ class ApiService {
     }
     final responseData = e.response?.data;
     if (responseData is Map && responseData['message'] != null) {
-      return responseData['message'].toString();
+      throw ApiException(
+        responseData['message'].toString(),
+        code: responseData['code']?.toString(),
+        statusCode: e.response?.statusCode,
+      );
     }
     if (responseData is String && responseData.isNotEmpty) {
-      return responseData;
+      throw ApiException(responseData, statusCode: e.response?.statusCode);
     }
     final statusCode = e.response?.statusCode;
     if (statusCode != null) {
-      return responseData != null
-          ? 'HTTP $statusCode: $responseData'
-          : 'HTTP $statusCode: ${e.message ?? 'Nepoznata greška'}';
+      throw ApiException(
+        responseData != null
+            ? 'HTTP $statusCode: $responseData'
+            : 'HTTP $statusCode: ${e.message ?? 'Nepoznata greška'}',
+        statusCode: statusCode,
+      );
     }
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
-        return 'Timeout — provjeri API_BASE_URL i da li koristiš emulator ili fizički uređaj.';
+        throw ApiException('Timeout — provjeri API_BASE_URL i da li koristiš emulator ili fizički uređaj.');
       case DioExceptionType.connectionError:
-        return 'Nije moguće spojiti se na server. Provjeri IP adresu API-ja i mrežnu dostupnost.';
+        throw ApiException('Nije moguće spojiti se na server. Provjeri IP adresu API-ja i mrežnu dostupnost.');
       default:
-        return 'Došlo je do greške. Pokušaj ponovo.';
+        throw ApiException('Došlo je do greške. Pokušaj ponovo.');
     }
   }
 }

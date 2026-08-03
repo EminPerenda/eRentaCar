@@ -18,8 +18,9 @@ namespace eRentaCar.Worker
         private const string QueueName = "notifications";
         private const int MaxRetries = 3;
 
-        // Tracks delivery attempt counts for messages that keep failing
-        private readonly ConcurrentDictionary<ulong, int> _retryCounts = new();
+        // Tracks delivery attempt counts for messages that keep failing.
+        // Uses a stable message id so retries survive re-delivery.
+        private readonly ConcurrentDictionary<string, int> _retryCounts = new();
 
         public Worker(ILogger<Worker> logger, EmailService emailService)
         {
@@ -94,6 +95,7 @@ namespace eRentaCar.Worker
                     var body = args.Body.ToArray();
                     var json = Encoding.UTF8.GetString(body);
                     var message = JsonSerializer.Deserialize<NotificationMessage>(json);
+                    var messageId = ResolveMessageId(message, args.BasicProperties?.MessageId, body);
 
                     if (message == null)
                     {
@@ -113,19 +115,24 @@ namespace eRentaCar.Worker
                         );
                     }
 
-                    _retryCounts.TryRemove(deliveryTag, out _);
+                    _retryCounts.TryRemove(messageId, out _);
                     await _channel.BasicAckAsync(deliveryTag, false);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Greška pri obradi poruke iz RabbitMQ-a.");
 
-                    var attempts = _retryCounts.AddOrUpdate(deliveryTag, 1, (_, count) => count + 1);
+                    var body = args.Body.ToArray();
+                    var json = Encoding.UTF8.GetString(body);
+                    var message = JsonSerializer.Deserialize<NotificationMessage>(json);
+                    var messageId = ResolveMessageId(message, args.BasicProperties?.MessageId, body);
+
+                    var attempts = _retryCounts.AddOrUpdate(messageId, 1, (_, count) => count + 1);
 
                     if (attempts >= MaxRetries)
                     {
-                        _logger.LogError("Poruka odbačena nakon {MaxRetries} pokušaja (deliveryTag={Tag}).", MaxRetries, deliveryTag);
-                        _retryCounts.TryRemove(deliveryTag, out _);
+                        _logger.LogError("Poruka odbačena nakon {MaxRetries} pokušaja (messageId={MessageId}).", MaxRetries, messageId);
+                        _retryCounts.TryRemove(messageId, out _);
                         await _channel.BasicNackAsync(deliveryTag, false, requeue: false);
                     }
                     else
@@ -145,6 +152,17 @@ namespace eRentaCar.Worker
 
             while (!stoppingToken.IsCancellationRequested)
                 await Task.Delay(1000, stoppingToken);
+        }
+
+        private static string ResolveMessageId(NotificationMessage? message, string? headerMessageId, byte[] body)
+        {
+            if (!string.IsNullOrWhiteSpace(headerMessageId))
+                return headerMessageId;
+
+            if (!string.IsNullOrWhiteSpace(message?.NotificationId))
+                return message.NotificationId;
+
+            return $"body:{Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(body))}";
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)

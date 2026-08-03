@@ -99,6 +99,222 @@ class _ReferenceScreenState extends State<ReferenceScreen>
     );
   }
 
+  int? _countryIdByName(String? countryName) {
+    if (countryName == null || countryName.trim().isEmpty) {
+      return null;
+    }
+
+    for (final country in _countries) {
+      final item = country as Map<String, dynamic>;
+      if (item['name'] == countryName) {
+        return item['id'] as int?;
+      }
+    }
+
+    return null;
+  }
+
+  String? _generateCountryCode(String value) {
+    final lettersOnly = value.replaceAll(RegExp(r'[^A-Za-z]'), '');
+    if (lettersOnly.length < 2) {
+      return null;
+    }
+
+    return lettersOnly.substring(0, 2).toUpperCase();
+  }
+
+  void _showCityDialog({Map<String, dynamic>? city}) {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController(text: city?['name'] ?? '');
+    int? selectedCountryId = _countryIdByName(city?['country'] as String?);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(city == null ? 'Dodaj grad' : 'Uredi grad'),
+          content: SizedBox(
+            width: 360,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Naziv grada',
+                      isDense: true,
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Naziv grada je obavezan.'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: selectedCountryId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Država',
+                      isDense: true,
+                    ),
+                    items: _countries
+                        .map(
+                          (country) => DropdownMenuItem<int>(
+                            value: country['id'] as int,
+                            child: Text(
+                              '${country['name']} (${country['code']})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    validator: (value) => value == null
+                        ? 'Odaberite državu za grad.'
+                        : null,
+                    onChanged: (value) =>
+                        setDialogState(() => selectedCountryId = value),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Odustani'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+
+                final body = {
+                  'name': nameCtrl.text.trim(),
+                  'countryId': selectedCountryId,
+                };
+
+                Navigator.pop(ctx);
+
+                try {
+                  if (city == null) {
+                    await _api.post('/api/reference/cities', body);
+                  } else {
+                    await _api.put('/api/reference/cities/${city['id']}', body);
+                  }
+                  _loadAll();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString()),
+                      backgroundColor: AppTheme.error,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Sačuvaj'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCountryDialog({Map<String, dynamic>? country}) {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController(text: country?['name'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final generatedCode = _generateCountryCode(nameCtrl.text.trim());
+
+          return AlertDialog(
+            title: Text(country == null ? 'Dodaj državu' : 'Uredi državu'),
+            content: SizedBox(
+              width: 360,
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameCtrl,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Naziv države',
+                        isDense: true,
+                        helperText: generatedCode == null
+                            ? 'Unesite najmanje dva slova za generisanje koda.'
+                            : 'Kod države će biti $generatedCode.',
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) {
+                          return 'Naziv države je obavezan.';
+                        }
+
+                        if (_generateCountryCode(trimmed) == null) {
+                          return 'Naziv mora imati najmanje dva slova.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Odustani'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (!(formKey.currentState?.validate() ?? false)) return;
+
+                  final code = _generateCountryCode(nameCtrl.text.trim());
+                  if (code == null) {
+                    return;
+                  }
+
+                  final body = {
+                    'name': nameCtrl.text.trim(),
+                    'code': code,
+                  };
+
+                  Navigator.pop(ctx);
+
+                  try {
+                    if (country == null) {
+                      await _api.post('/api/reference/countries', body);
+                    } else {
+                      await _api.put('/api/reference/countries/${country['id']}', body);
+                    }
+                    _loadAll();
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString()),
+                        backgroundColor: AppTheme.error,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Sačuvaj'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _deleteItem(String endpoint, int id, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -168,7 +384,7 @@ class _ReferenceScreenState extends State<ReferenceScreen>
           child: Card(
             child: ListView.separated(
               itemCount: items.length,
-              separatorBuilder: (_, __) =>
+              separatorBuilder: (_, _) =>
                   const Divider(height: 1),
               itemBuilder: (context, index) {
                 final item = items[index] as Map<String, dynamic>;
@@ -343,52 +559,16 @@ class _ReferenceScreenState extends State<ReferenceScreen>
                   _buildSimpleList(
                     items: _cities,
                     nameField: 'name',
-                    onAdd: () => _showSimpleDialog(
-                      title: 'Dodaj grad',
-                      fieldLabel: 'Naziv grada',
-                      onSave: (val) async {
-                        await _api.post('/api/reference/cities',
-                            {'name': val, 'countryId': 1});
-                        _loadAll();
-                      },
-                    ),
-                    onEdit: (item) => _showSimpleDialog(
-                      title: 'Uredi grad',
-                      fieldLabel: 'Naziv grada',
-                      initialValue: item['name'],
-                      onSave: (val) async {
-                        await _api.put(
-                            '/api/reference/cities/${item['id']}',
-                            {'name': val, 'countryId': 1});
-                        _loadAll();
-                      },
-                    ),
+                    onAdd: () => _showCityDialog(),
+                    onEdit: (item) => _showCityDialog(city: item),
                     onDelete: (item) => _deleteItem(
                         '/api/reference/cities', item['id'], item['name']),
                   ),
                   _buildSimpleList(
                     items: _countries,
                     nameField: 'name',
-                    onAdd: () => _showSimpleDialog(
-                      title: 'Dodaj državu',
-                      fieldLabel: 'Naziv države',
-                      onSave: (val) async {
-                        await _api.post('/api/reference/countries',
-                            {'name': val, 'code': val.substring(0, 2).toUpperCase()});
-                        _loadAll();
-                      },
-                    ),
-                    onEdit: (item) => _showSimpleDialog(
-                      title: 'Uredi državu',
-                      fieldLabel: 'Naziv države',
-                      initialValue: item['name'],
-                      onSave: (val) async {
-                        await _api.put(
-                            '/api/reference/countries/${item['id']}',
-                            {'name': val, 'code': item['code']});
-                        _loadAll();
-                      },
-                    ),
+                    onAdd: () => _showCountryDialog(),
+                    onEdit: (item) => _showCountryDialog(country: item),
                     onDelete: (item) => _deleteItem(
                         '/api/reference/countries',
                         item['id'],

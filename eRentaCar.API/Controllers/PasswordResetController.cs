@@ -24,7 +24,7 @@ namespace eRentaCar.API.Controllers
         [HttpPost("confirm")]
         public async Task<IActionResult> ConfirmReset([FromBody] ConfirmResetDto request)
         {
-            await _passwordResetService.ConfirmResetAsync(request.Code, request.NewPassword);
+            await _passwordResetService.ConfirmResetAsync(request.Email, request.Code, request.NewPassword);
             return Ok(new { message = "Lozinka je uspješno promijenjena." });
         }
     }
@@ -36,6 +36,7 @@ namespace eRentaCar.API.Controllers
 
     public class ConfirmResetDto
     {
+        public string Email { get; set; } = null!;
         public string Code { get; set; } = null!;
         public string NewPassword { get; set; } = null!;
     }

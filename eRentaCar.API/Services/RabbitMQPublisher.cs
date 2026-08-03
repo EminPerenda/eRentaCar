@@ -93,7 +93,11 @@ namespace eRentaCar.API.Services
 
                 var json = JsonSerializer.Serialize(message);
                 var body = Encoding.UTF8.GetBytes(json);
-                var props = new BasicProperties { Persistent = true };
+                var props = new BasicProperties
+                {
+                    Persistent = true,
+                    MessageId = message.NotificationId ?? $"notification:{message.UserId}:{message.Type}:{message.Title}:{message.Message}"
+                };
 
                 await _channel.BasicPublishAsync(
                     exchange: "",

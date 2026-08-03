@@ -141,18 +141,13 @@ class _ReservationsScreenState extends State<ReservationsScreen>
     }
   }
 
-  Future<void> _refundAndCancelReservation(
-      Map<String, dynamic> reservation, String reason) async {
+    Future<void> _refundAndCancelReservation(
+      Map<String, dynamic> reservation) async {
     setState(() => _isLoading = true);
     try {
       final paymentService = PaymentService();
       await paymentService.refundReservation(
         reservationId: reservation['id'],
-      );
-
-      await _api.patch(
-        '${ApiConfig.reservations}/${reservation['id']}/cancel',
-        data: {'reason': reason},
       );
 
       if (!mounted) return;
@@ -242,7 +237,8 @@ class _ReservationsScreenState extends State<ReservationsScreen>
     final status = reservation['status'] as String;
     final color = _statusColor(status);
     final isPaid = _isPaidReservation(reservation);
-    final canRefundCancel = isActive && status != 'Pending' && isPaid;
+    final canRefundCancel = isActive && isPaid &&
+      (status == 'Confirmed' || status == 'Active');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -316,7 +312,7 @@ class _ReservationsScreenState extends State<ReservationsScreen>
                     color: AppTheme.accent,
                   ),
                 ),
-                if (isActive && status == 'Pending')
+                if (isActive && (status == 'Pending' || canRefundCancel))
                   TextButton.icon(
                     icon: const Icon(Icons.cancel_outlined,
                         color: AppTheme.error, size: 18),
@@ -460,8 +456,7 @@ class _ReservationsScreenState extends State<ReservationsScreen>
               }
               Navigator.pop(ctx);
               if (refundBeforeCancel) {
-                await _refundAndCancelReservation(
-                    reservation, controller.text.trim());
+                await _refundAndCancelReservation(reservation);
               } else {
                 await _cancelReservation(
                     reservation['id'], controller.text.trim());

@@ -40,7 +40,7 @@ cp .env.example .env
 # 3. Start all services
 docker compose up --build -d
 
-# 4. Wait ~30 seconds for SQL Server to initialise, then the API seeds the database automatically.
+# 4. Wait ~30 seconds for SQL Server to initialise. The API applies migrations and seeds the database automatically on startup.
 ```
 
 The API is available at `http://localhost:5091`.  
@@ -66,7 +66,7 @@ cd eRentaCar.API
 dotnet run
 ```
 
-The API reads configuration from the `.env` file in the repository root and environment variables. Ensure `CONNECTION_STRING`, `JWT_KEY`, `JWT_ISSUER`, `JWT_AUDIENCE` are set.
+The API reads configuration from the `.env` file in the repository root and environment variables. Ensure `CONNECTION_STRING`, `JWT_KEY`, `JWT_ISSUER`, `JWT_AUDIENCE` are set. If you use email notifications, also set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, and `SMTP_PASSWORD`.
 
 ### 3. Worker
 
@@ -113,7 +113,7 @@ Napomena: `10.0.2.2` radi samo na Android emulatoru. Ako koristiš pravi telefon
 | `RABBITMQ_HOST`         | RabbitMQ hostname                         | `localhost`               |
 | `SMTP_HOST`             | SMTP server                               | _(required for emails)_   |
 | `SMTP_PORT`             | SMTP port                                 | `587`                     |
-| `SMTP_USER`             | SMTP username                             | _(required for emails)_   |
+| `SMTP_USERNAME`         | SMTP username                             | _(required for emails)_   |
 | `SMTP_PASSWORD`         | SMTP password                             | _(required for emails)_   |
 | `SA_PASSWORD`           | SQL Server SA password (Docker only)      | `eRentaCar_SA_2024!`      |
 | `DB_NAME`               | Database name                             | `230290`                  |

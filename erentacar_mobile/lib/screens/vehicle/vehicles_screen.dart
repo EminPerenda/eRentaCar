@@ -194,20 +194,33 @@ void initState() {
 
   Future<void> _pickDate(bool isStart) async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startDate = _startDate == null
+        ? null
+        : DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+    final minEndDate = startDate?.add(const Duration(days: 1));
+    final initialEndDate = _endDate != null && minEndDate != null && _endDate!.isBefore(minEndDate)
+        ? minEndDate
+        : (_endDate ?? minEndDate ?? today.add(const Duration(days: 1)));
     final picked = await showDatePicker(
       context: context,
       initialDate: isStart
-          ? (_startDate ?? now)
-          : (_endDate ?? now.add(const Duration(days: 1))),
-      firstDate: now,
+          ? (_startDate ?? today)
+          : initialEndDate,
+      firstDate: isStart
+          ? today
+          : (minEndDate ?? today.add(const Duration(days: 1))),
       lastDate: now.add(const Duration(days: 365)),
     );
     if (picked != null) {
       setState(() {
         if (isStart) {
           _startDate = picked;
-          if (_endDate != null && _endDate!.isBefore(_startDate!)) {
-            _endDate = null;
+          final nextDay = picked.add(const Duration(days: 1));
+          if (_endDate == null || !_endDate!.isAfter(picked)) {
+            _endDate = nextDay;
+          } else if (_endDate!.isBefore(nextDay)) {
+            _endDate = nextDay;
           }
         } else {
           _endDate = picked;

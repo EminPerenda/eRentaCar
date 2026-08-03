@@ -5,6 +5,10 @@ class ApiConfig {
   static const String stripePublishableKey = 'pk_test_51R15iKQeAv5CVrKBNRdp2W0gI6lLWp51wvb3uuO8BHCl6mZeiYILwRnF6xAxWclDYyxdeAt2ogqvRsl00d9W3iTp00c4ay8P62';
 
   static String _resolveBaseUrl() {
+    if (kReleaseMode) {
+      return 'http://10.0.2.2:5091';
+    }
+
     const envBaseUrl = String.fromEnvironment('API_BASE_URL');
     if (envBaseUrl.isNotEmpty) {
       return envBaseUrl;

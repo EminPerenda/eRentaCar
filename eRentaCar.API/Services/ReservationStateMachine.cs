@@ -8,7 +8,7 @@ namespace eRentaCar.API.Services
         private static readonly Dictionary<ReservationStatus, HashSet<ReservationStatus>> _allowed = new()
         {
             [ReservationStatus.Pending]   = new() { ReservationStatus.Confirmed, ReservationStatus.Cancelled },
-            [ReservationStatus.Confirmed] = new() { ReservationStatus.Active, ReservationStatus.Completed, ReservationStatus.Cancelled },
+            [ReservationStatus.Confirmed] = new() { ReservationStatus.Active, ReservationStatus.Cancelled },
             [ReservationStatus.Active]    = new() { ReservationStatus.Completed, ReservationStatus.Cancelled },
             [ReservationStatus.Completed] = new(),
             [ReservationStatus.Cancelled] = new(),

@@ -35,7 +35,7 @@ namespace eRentaCar.API.Controllers
             var isAdmin = User.IsInRole(AppRoles.Admin);
             var result = await _reservationService.GetByIdAsync(id);
 
-            if (!isAdmin && result.ClientEmail != User.FindFirstValue(ClaimTypes.Email))
+            if (!isAdmin && result.UserId != userId)
                 throw new UnauthorizedException();
 
             return Ok(result);

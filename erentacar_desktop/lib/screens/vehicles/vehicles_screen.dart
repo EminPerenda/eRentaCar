@@ -52,6 +52,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       final params = <String, dynamic>{
         'page': _page,
         'pageSize': _pageSize,
+        'includeUnavailable': true,
       };
       if (_searchController.text.isNotEmpty) {
         params['search'] = _searchController.text;
