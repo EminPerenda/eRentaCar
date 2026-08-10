@@ -41,6 +41,8 @@ namespace eRentaCar.API.Services
 
         public async Task<LocationResponse> CreateAsync(LocationRequest request)
         {
+            await EnsureCityExistsAsync(request.CityId);
+
             var location = new Location
             {
                 Name = request.Name,
@@ -63,6 +65,8 @@ namespace eRentaCar.API.Services
             var location = await _context.Locations.FindAsync(id)
                 ?? throw new NotFoundException("Lokacija", id);
 
+            await EnsureCityExistsAsync(request.CityId);
+
             location.Name = request.Name;
             location.Address = request.Address;
             location.CityId = request.CityId;
@@ -75,7 +79,12 @@ namespace eRentaCar.API.Services
 
             return await GetByIdAsync(location.Id);
         }
-
+        private async Task EnsureCityExistsAsync(int cityId)
+        {
+            var exists = await _context.Cities.AnyAsync(x => x.Id == cityId);
+            if (!exists)
+                throw new BusinessException("Grad ne postoji.");
+        }
         public async Task DeleteAsync(int id)
         {
             var location = await _context.Locations.FindAsync(id)

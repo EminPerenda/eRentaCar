@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using eRentaCar.API.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRentaCar.API.Controllers
 {
@@ -18,15 +20,18 @@ namespace eRentaCar.API.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITokenService _tokenService;
         private readonly ITokenRevocationService _tokenRevocation;
+        private readonly ApplicationDbContext _context;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             ITokenService tokenService,
-            ITokenRevocationService tokenRevocation)
+            ITokenRevocationService tokenRevocation,
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _tokenRevocation = tokenRevocation;
+            _context = context; 
         }
 
         [HttpPost("register")]
@@ -37,6 +42,9 @@ namespace eRentaCar.API.Controllers
             if (await _userManager.FindByEmailAsync(request.Email) != null)
                 throw new BusinessException("Korisnik s ovom email adresom već postoji.");
 
+            if (request.CityId.HasValue && !await _context.Cities.AnyAsync(x => x.Id == request.CityId.Value))
+                throw new BusinessException("Grad ne postoji.");
+                
             var user = new ApplicationUser
             {
                 UserName = request.Email,
